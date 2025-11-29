@@ -19,8 +19,12 @@ A web scraping API that fetches baby name information from [babynamemeaningz.com
 
 ## Usage
 
+### Live Demo
+- **Web Interface**: [https://baby-name-api.vercel.app](https://baby-name-api.vercel.app) (or check your Vercel dashboard for the exact domain)
+- **GitHub Repo**: [https://github.com/talatpk/baby-name-api](https://github.com/talatpk/baby-name-api)
+
 ### Web Interface
-Visit the root URL (e.g., `http://localhost:3000` or your deployed URL) to use the interactive search.
+Visit the root URL to use the interactive search.
 
 ### API Endpoints
 
