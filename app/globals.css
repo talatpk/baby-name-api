@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --secondary: #ec4899;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  color: #1e293b;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+.search-input {
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+  border-color: var(--primary);
+}
+
+.result-card {
+  animation: slideUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(99, 102, 241, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.tag {
+  transition: all 0.2s ease;
+}
+
+.tag:hover {
+  transform: translateY(-2px);
+}
