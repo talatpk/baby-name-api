@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    message: 'Baby Name API - Scrapes data from babynamemeaningz.com',
+    message: 'Baby Name API',
     version: '1.0.0',
     endpoints: {
       search: {

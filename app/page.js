@@ -126,16 +126,7 @@ export default function Home() {
                             </div>
                         )}
 
-                        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-                            <a
-                                href={result.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-indigo-500 hover:text-indigo-700 text-sm font-medium inline-flex items-center gap-1"
-                            >
-                                View full details on BabyNameMeaningz <span aria-hidden="true">&rarr;</span>
-                            </a>
-                        </div>
+                        {/* Source link removed as requested */}
                     </div>
                 </div>
             )}

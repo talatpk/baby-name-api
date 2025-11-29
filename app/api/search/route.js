@@ -1,5 +1,20 @@
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 import { NextResponse } from 'next/server';
+
+// List of user agents to rotate
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0'
+];
+
+const getRandomUserAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+
+// Helper to wait
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function GET(request) {
     try {
@@ -13,67 +28,141 @@ export async function GET(request) {
             );
         }
 
-        // Step 1: Search for the name using the internal API
-        const searchApiUrl = `https://babynamemeaningz.com/search.php?action=search&query=${encodeURIComponent(name)}&gender=&offset=0&limit=20`;
+        let searchResults = null;
+        let errorDetails = '';
 
-        console.log(`Fetching: ${searchApiUrl}`);
+        // METHOD 1: Try the Internal API
+        try {
+            const searchApiUrl = `https://babynamemeaningz.com/search.php?action=search&query=${encodeURIComponent(name)}&gender=&offset=0&limit=20`;
+            console.log(`Attempting Method 1 (API): ${searchApiUrl}`);
 
-        // Add a small random delay to mimic human behavior
-        await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 500) + 100));
+            // Random delay
+            await delay(Math.floor(Math.random() * 300) + 100);
 
-        const searchResponse = await axios.get(searchApiUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'max-age=0',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1'
-            },
-            timeout: 10000
-        });
+            const response = await axios.get(searchApiUrl, {
+                headers: {
+                    'User-Agent': getRandomUserAgent(),
+                    'Accept': 'application/json, text/javascript, */*; q=0.01',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Referer': 'https://babynamemeaningz.com/',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                timeout: 5000
+            });
 
-        // The API returns JSON data with name results
-        const searchResults = searchResponse.data;
+            if (typeof response.data === 'object' && response.data.results) {
+                searchResults = response.data;
+                console.log('Method 1 success');
+            } else {
+                throw new Error('Invalid API response');
+            }
+        } catch (e) {
+            console.log('Method 1 failed:', e.message);
+            errorDetails += `Method 1: ${e.message}; `;
+        }
 
-        // Log the response type for debugging
-        console.log('Response type:', typeof searchResults);
+        // METHOD 2: Fallback to HTML Scraping if Method 1 failed
+        if (!searchResults) {
+            try {
+                const searchHtmlUrl = `https://babynamemeaningz.com/search.php?search=${encodeURIComponent(name)}`;
+                console.log(`Attempting Method 2 (HTML): ${searchHtmlUrl}`);
 
-        // Check if response is string (sometimes they return HTML on error)
-        if (typeof searchResults === 'string' && searchResults.includes('<!DOCTYPE html>')) {
-            throw new Error('Target website returned HTML instead of JSON. Request might be blocked.');
+                await delay(Math.floor(Math.random() * 500) + 200);
+
+                const response = await axios.get(searchHtmlUrl, {
+                    headers: {
+                        'User-Agent': getRandomUserAgent(),
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Referer': 'https://www.google.com/',
+                    },
+                    timeout: 8000
+                });
+
+                const $ = cheerio.load(response.data);
+                const results = [];
+
+                // Try to find results in the HTML
+                // Note: This depends on the site returning server-side rendered HTML
+                // If it's purely client-side, this might fail, but it's worth a shot as a fallback
+                $('a').each((i, elem) => {
+                    const href = $(elem).attr('href');
+                    const text = $(elem).text().trim();
+
+                    // Look for likely result links
+                    if (href && (href.includes('/girl/') || href.includes('/boy/')) &&
+                        text.toLowerCase().includes(name.toLowerCase())) {
+
+                        // Extract basic info if possible
+                        const parent = $(elem).closest('div');
+                        const meaning = parent.text().match(/Meaning:?\s*([^.\n]+)/i)?.[1] || 'N/A';
+
+                        results.push({
+                            name: text,
+                            gender: href.includes('/girl/') ? 'Girl' : 'Boy',
+                            url: href.startsWith('http') ? href : `https://babynamemeaningz.com/${href.replace(/^\//, '')}`,
+                            meaning: meaning,
+                            origin: 'N/A', // Hard to extract from list view reliably
+                            religion: 'N/A'
+                        });
+                    }
+                });
+
+                if (results.length > 0) {
+                    searchResults = { results: results };
+                    console.log('Method 2 success');
+                } else {
+                    // Check for "name-card" class which we saw earlier
+                    $('a.name-card').each((i, elem) => {
+                        const href = $(elem).attr('href');
+                        const nameText = $(elem).find('h3').text().trim();
+
+                        if (href && nameText) {
+                            results.push({
+                                name: nameText,
+                                gender: href.includes('/girl/') ? 'Girl' : 'Boy',
+                                url: href.startsWith('http') ? href : `https://babynamemeaningz.com/${href.replace(/^\//, '')}`,
+                                meaning: $(elem).find('p').text().trim() || 'N/A',
+                                origin: $(elem).find('span').first().text().trim() || 'N/A',
+                                religion: 'N/A'
+                            });
+                        }
+                    });
+
+                    if (results.length > 0) {
+                        searchResults = { results: results };
+                        console.log('Method 2 success (name-card)');
+                    }
+                }
+
+            } catch (e) {
+                console.log('Method 2 failed:', e.message);
+                errorDetails += `Method 2: ${e.message}`;
+            }
         }
 
         if (!searchResults || !searchResults.results || searchResults.results.length === 0) {
             return NextResponse.json(
-                { error: 'No results found for this name' },
+                {
+                    error: 'No results found for this name',
+                    debug: errorDetails
+                },
                 { status: 404 }
             );
         }
 
-        // Get the first result
+        // Process the first result
         const firstResult = searchResults.results[0];
 
-        // Build the detail page URL
-        const nameSlug = firstResult.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
-        const gender = firstResult.gender || 'Girl';
-        const detailPath = gender === 'Boy'
-            ? `boy/${nameSlug}.html`
-            : gender === 'Girl'
-                ? `girl/${nameSlug}.html`
-                : `gender-neutral/${nameSlug}.html`;
-
-        const detailUrl = `https://babynamemeaningz.com/${detailPath}`;
-
-        // Build the response from the search result data
+        // Normalize the data
         const nameData = {
             name: firstResult.name || name,
-            url: detailUrl,
+            url: firstResult.url, // Keep the URL for internal use but don't display it in UI if not needed
             gender: firstResult.gender || 'N/A',
             origin: firstResult.origin || 'N/A',
             religion: firstResult.religion || 'N/A',
             meaning: firstResult.meaning || firstResult.u_mean || 'N/A',
-            howToWrite: firstResult.translated_names || 'N/A',
+            howToWrite: firstResult.translated_names || firstResult.urdu || firstResult.name_urdu || 'N/A',
             syllables: 'N/A',
             luckyNumber: firstResult.lucky_no || firstResult.lucky_number || 'N/A',
             luckyColor: firstResult.lucky_color || 'N/A',
@@ -82,7 +171,7 @@ export async function GET(request) {
             luckyStone: firstResult.lucky_stone || 'N/A',
         };
 
-        // Add similar names if available
+        // Add similar names
         if (searchResults.results.length > 1) {
             nameData.similarNames = searchResults.results.slice(1, 11).map(n => n.name);
         }

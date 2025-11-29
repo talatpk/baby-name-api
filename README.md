@@ -1,6 +1,6 @@
 # Baby Name API
 
-A web scraping API that fetches baby name information from [babynamemeaningz.com](https://babynamemeaningz.com/). This API can be deployed to Vercel and returns data in JSON format.
+A web scraping API that fetches baby name information. This API can be deployed to Vercel and returns data in JSON format.
 
 ## Features
 
