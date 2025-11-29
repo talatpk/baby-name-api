@@ -15,15 +15,36 @@ export async function GET(request) {
 
         // Step 1: Search for the name using the internal API
         const searchApiUrl = `https://babynamemeaningz.com/search.php?action=search&query=${encodeURIComponent(name)}&gender=&offset=0&limit=20`;
+
+        console.log(`Fetching: ${searchApiUrl}`);
+
         const searchResponse = await axios.get(searchApiUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'application/json'
-            }
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://babynamemeaningz.com/',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"macOS"',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'same-origin'
+            },
+            timeout: 8000 // 8 second timeout
         });
 
         // The API returns JSON data with name results
         const searchResults = searchResponse.data;
+
+        // Log the response type for debugging
+        console.log('Response type:', typeof searchResults);
+
+        // Check if response is string (sometimes they return HTML on error)
+        if (typeof searchResults === 'string' && searchResults.includes('<!DOCTYPE html>')) {
+            throw new Error('Target website returned HTML instead of JSON. Request might be blocked.');
+        }
 
         if (!searchResults || !searchResults.results || searchResults.results.length === 0) {
             return NextResponse.json(
